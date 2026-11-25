@@ -15,6 +15,18 @@ The server stores only ciphertext, wrapped keys and **sealed titles**. Documents
 countdown. See [ephemeral access](docs/ephemeral_access_2026-11-25.md) and the
 [crypto assessment](docs/crypto_assessment_2026-11-25.md).
 
+## Brand
+
+Brand kit in `frontend/assets/` (see its `LEIA-ME.md`): Grafite `#2C2923`, Marfim `#FCEEDB`.
+The header uses the wordmark SVG, the footer and landing page the symbol, and the landing's
+"Quem pode ler seu documento?" section the diagrams in `frontend/assets/pode-abrir-diagrama/`
+(desktop and mobile SVG via `<picture>`); favicons, app icons,
+the Open Graph image (`og:image`, link previews) and the web wordmark are copied into
+`frontend/public/` by `npm run brand` (runs automatically before `dev` and `build`). Emails carry
+their own copy of the wordmark (`exams/email_assets/logo.png`, embedded inline as `cid:`), so the
+logo shows whatever server sent the message and without loading remote images. Contact:
+contato@podeabrir.com (landing page, footer, emails).
+
 ## Stack
 
 | Layer | Technology |
@@ -32,8 +44,11 @@ In production Django serves both the API and the built SPA from one container.
 
 ```
 positron/
+├── VERSION                # platform version (shown under the login card)
 ├── start_server.py        # unified launcher (backend + frontend)
 ├── scripts/e2e_database.py  # create/drop the disposable positron_e2e database
+├── scripts/generate_azure_app_settings.py  # .env -> Azure Web App settings JSON
+├── scripts/deploy/        # container entrypoint (roles) and healthcheck
 ├── manage.py
 ├── requirements.txt       # pinned Python deps
 ├── Dockerfile             # node build stage + python 3.11 runtime
@@ -45,6 +60,7 @@ positron/
 │   ├── security.py        # middleware (CSP, size limit), auth helpers, rate limit, audit log
 │   ├── account.py         # session, login, logout, vault password check, health
 │   ├── enrollment.py      # invitations by email (bootstrap + staff), sign-up + TOTP
+│   ├── admin_area.py      # admin area API: invitations, access requests, admin role
 │   ├── password_reset.py  # email reset with recovery code (E2EE preserved) or fresh vault
 │   ├── outbox.py, mailer.py, email_templates.py  # SMTP outbox (ported from agenda_ai)
 │   ├── library.py         # documents: list (paginated), upload, ciphertext (sealed metadata)
@@ -65,7 +81,9 @@ positron/
 │   ├── src/pages/         # Landing, Login, Enroll, ForgotPassword, ResetPassword, Library,
 │   │                      # Upload, DocumentViewer, Approve, ShareLink, Grants, Account,
 │   │                      # Invitations, Reader (/ler, /@nome), LinkReader (/s/<id>)
-│   ├── public/            # sw.js (push only, no cache), manifest, icons
+│   ├── assets/            # brand kit (source of truth): wordmark, symbol, favicons, social image
+│   ├── public/            # sw.js (push + offline page only), offline.html, manifest; brand files from assets/
+│   │                      # by scripts/copy-brand-assets.mjs before every dev/build
 │   └── scripts/copy-pdf-assets.mjs  # PDF.js fonts/cmaps/wasm served from our origin
 └── docs/                  # dated technical records
 ```
@@ -95,7 +113,7 @@ python start_server.py
 
 Open `http://localhost:5190/cadastro/`, expand "Primeira conta desta instalação", enter the
 installation code and your email. Open the invitation link you receive, choose a password,
-**save the recovery code**, and set up Microsoft Authenticator (or any TOTP app). The first
+**save the recovery code**, and set up an authenticator app (any TOTP app). The first
 account is staff and invites others by email.
 
 | Mode | Command | URL |
@@ -128,7 +146,8 @@ device needs HTTPS (use the Azure deployment or an HTTPS tunnel).
    owner's browser re-seals only the chosen data keys for that grant (ECDH for readers, a random
    link key carried in the URL fragment for links). Lifetimes are presets capped at 7 days.
 4. **Read.** Recipients need no account. Their browser decrypts locally; the reader shows a
-   countdown and a watermark, has no download and blocks printing. The server checks the grant
+   countdown, burns a watermark into the page ("divulgação proibida", LGPD notice and a `Ref.`
+   that traces back to the grant in the owner's list), has no download and blocks printing. The server checks the grant
    on every request (expiry, opens, PIN lockout, revocation).
 5. **Control.** "Compartilhamentos" lists pending requests, active grants (Estender / Encerrar,
    optimistic with rollback) and the hash-chained "Quem viu" history, verified in the browser.
@@ -159,6 +178,7 @@ with python-dotenv; real environment variables always win (App Service, CI, Dock
 | `PG_LOCAL_*` | Local PostgreSQL (shared container). `PG_LOCAL_DATABASE=positron_db` (browser tests: `positron_e2e`) |
 | `POSTGRES_*` | Azure / CI PostgreSQL (production uses `sslmode=verify-full`) |
 | `EMAIL_ENABLED`, `EMAIL_SMTP_*`, `EMAIL_FROM_*`, `EMAIL_REPLY_TO` | SMTP for invitations and reset (local: agenda_ai mailbox). `false` prints emails in the `[mailer]` console (development only) |
+| `EMAIL_IMAP_HOST`, `EMAIL_IMAP_PORT`, `EMAIL_IMAP_USERNAME`, `EMAIL_IMAP_PASSWORD`, `EMAIL_IMAP_FOLDER`, `EMAIL_BOUNCE_CHECK_SECONDS` | Bounce reports read over IMAP and shown as "Não entregue" in the admin area; empty host disables it; credentials default to SMTP |
 | `EMAIL_MAX_ATTEMPTS`, `EMAIL_RETRY_BASE_SECONDS`, `EMAIL_PROCESSING_TIMEOUT_SECONDS`, `EMAIL_WORKER_INTERVAL_SECONDS`, `EMAIL_MAX_SENDS_PER_HOUR` | Outbox retry, worker polling, per-address send cap |
 | `PASSWORD_RESET_MINUTES` | Reset link lifetime |
 | `GRANT_MAX_MINUTES`, `LINK_VIEW_MINUTES`, `LINK_PIN_MAX_FAILURES`, `HISTORY_WINDOW` | Ephemeral access caps: max lifetime (7 days), link viewing session, PIN lockout, history window |
@@ -179,7 +199,11 @@ State-changing calls need the `X-CSRFToken` header (token from `GET /api/session
 | POST | `/api/auth/vault/verify/` | owner | check password, return the sealed vault key (new tab) |
 | POST | `/api/auth/password-reset/` | anyone | queue reset email (always 202, no enumeration) |
 | POST | `/api/auth/password-reset/inspect/`, `/confirm/` | reset link holder | email + recovery copy; confirm with TOTP + recovery proof or fresh vault |
-| POST | `/api/invitations/` | staff | email an invitation bound to that address |
+| POST | `/api/consents/` | owner | accept the current Terms + Privacy version (`LEGAL_VERSION`) |
+| POST | `/api/access-requests/` | anyone | "Solicitar acesso": emails the team inbox (`CONTACT_EMAIL`), requester as Reply-To; rate-limited, honeypot |
+| POST | `/api/invitations/` | staff | email an invitation bound to that address (`admin: true` for an admin account) |
+| GET | `/api/admin/invitations/`, `/api/admin/access-requests/`, `/api/admin/users/` | staff | admin area lists (`?page=`, 50 per page) |
+| PATCH | `/api/admin/users/<id>/` | staff | grant or remove the admin role (never your own) |
 | POST | `/api/invitations/bootstrap/` | installation code | email the first (staff) invitation |
 | POST | `/api/invitations/inspect/` | invite link holder | email bound to the invitation |
 | POST | `/api/enrollment/`, `/api/enrollment/confirm/` | invite link holder | sign-up (sealed vault copies), TOTP confirmation |
@@ -240,16 +264,20 @@ The script can only create/drop `positron_e2e`; the test runner only creates/dro
 
 ## Deploy
 
-`docker build .` produces a single image: Node builds the SPA, the Python 3.11 runtime
+`docker build .` produces a single image (roles: `platform`, `web`, `mailer`, `migrate`): Node builds the SPA, the Python 3.11 runtime
 serves API + SPA with Gunicorn on port 8000, runs migrations at start-up and starts the email
 worker beside Gunicorn. Production requires `EMAIL_ENABLED=true`. Azure App
-Service + PostgreSQL Flexible Server steps: [docs/azure.md](docs/azure.md).
+Service + PostgreSQL Flexible Server steps, the first-deploy status (Azure `positron_db` created and
+seeded from local) and the settings generator: [docs/azure.md](docs/azure.md).
 
 ## Documentation Index
 
 | Document | Content |
 |---|---|
 | [docs/crypto_assessment_2026-11-25.md](docs/crypto_assessment_2026-11-25.md) | Cryptography review, threat model, hardening roadmap, blockchain verdict |
+| [docs/admin_area_2026-11-25.md](docs/admin_area_2026-11-25.md) | Admin area (account menu, top right): invitations with delivery status, access requests, admin role |
+| [docs/privacy_lgpd_2026-11-25.md](docs/privacy_lgpd_2026-11-25.md) | Cookie notice (essential only), LGPD consent at sign-up and consent gate, privacy/terms pages, open legal items |
+| [docs/mobile_pwa_2026-11-25.md](docs/mobile_pwa_2026-11-25.md) | Mobile layout (tab bar, card table, tap targets) and installable app on iPhone/Android (manifest, install flows, offline page) |
 | [docs/ephemeral_access_2026-11-25.md](docs/ephemeral_access_2026-11-25.md) | Grants (in person, links, `@nome`), policy, sealed metadata, history chain, push |
 | [docs/auth_email_recovery_2026-11-25.md](docs/auth_email_recovery_2026-11-25.md) | Email identity, invitations by email, password reset with recovery code, outbox |
 | [docs/azure.md](docs/azure.md) | Azure App Service + PostgreSQL deployment (in Portuguese) |

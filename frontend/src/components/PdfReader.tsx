@@ -4,6 +4,7 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { useEffect, useRef, useState } from "react";
 
 import { errorMessage } from "../lib/format";
+import { burnWatermark, type Watermark } from "../lib/watermark";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 const ASSETS = "/pdfjs/";
@@ -16,8 +17,8 @@ interface Props {
   doc: ReaderDocument | null;
   /** Fetch and decrypt the document locally; must be referentially stable. */
   open: (id: string, signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>;
-  /** Deterrent text tiled over the page for grantees (who / when). */
-  watermark?: string;
+  /** Burned into the page pixels for grantees (who / when / reference / legal notice). */
+  watermark?: Watermark;
 }
 
 export function PdfReader({ doc, open, watermark }: Props) {
@@ -104,6 +105,7 @@ export function PdfReader({ doc, open, watermark }: Props) {
         rendering = task;
         await task.promise;
         if (cancelled) return;
+        if (watermark) burnWatermark(canvas, watermark, page);
         target.replaceChildren(canvas);
         frame.scrollTop = 0;
       } catch {
@@ -114,7 +116,7 @@ export function PdfReader({ doc, open, watermark }: Props) {
       cancelled = true;
       rendering?.cancel();
     };
-  }, [pdf, page, zoom, resizeTick]);
+  }, [pdf, page, zoom, resizeTick, watermark]);
 
   const pages = pdf?.numPages ?? 0;
   return (
@@ -139,11 +141,6 @@ export function PdfReader({ doc, open, watermark }: Props) {
         onContextMenu={(event) => event.preventDefault()}>
         <div className="pdf-stage">
           <div className="pdf-page" ref={output} />
-          {watermark && pdf && (
-            <div className="watermark" aria-hidden="true">
-              {Array.from({ length: 24 }, (_, index) => <span key={index}>{watermark}</span>)}
-            </div>
-          )}
         </div>
       </div>
     </section>

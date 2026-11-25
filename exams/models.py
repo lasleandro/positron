@@ -43,6 +43,7 @@ class Grant(models.Model):
     expires_at = models.DateTimeField(null=True, db_index=True)
     max_opens = models.PositiveIntegerField(null=True)
     opens = models.PositiveIntegerField(default=0)
+    viewing_until = models.DateTimeField(null=True)  # end of the latest link reading session
     pin_verifier = models.CharField(max_length=128, blank=True)
     pin_failures = models.PositiveSmallIntegerField(default=0)
     ended_at = models.DateTimeField(null=True)
@@ -140,6 +141,27 @@ class PasswordResetToken(models.Model):
     consumed_at = models.DateTimeField(null=True)
 
 
+class ConsentRecord(models.Model):
+    """Acceptance of the Terms + Privacy Policy, including specific consent for sensitive data
+    (LGPD art. 11, I), for one published version. A new version requires a new acceptance."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    version = models.CharField(max_length=20)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "version"], name="unique_consent_version")]
+
+
+class AccessRequest(models.Model):
+    """"Solicitar acesso" from the login page, forwarded to the team (no self-signup yet)."""
+
+    email = models.EmailField(max_length=150)
+    name = models.CharField(max_length=120, blank=True)
+    message = models.TextField(max_length=1000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class EmailDelivery(models.Model):
     """Durable outbox row. Raw tokens are never stored: they are issued when the message is rendered."""
 
@@ -147,13 +169,15 @@ class EmailDelivery(models.Model):
     PASSWORD_RESET = "password_reset"
     PASSWORD_CHANGED = "password_changed"
     READ_REQUEST = "read_request"
-    PURPOSES = [(name, name) for name in (INVITATION, PASSWORD_RESET, PASSWORD_CHANGED, READ_REQUEST)]
-    STATUSES = [(name, name) for name in ("queued", "processing", "retry_wait", "sent", "failed", "suppressed")]
+    ACCESS_REQUEST = "access_request"
+    PURPOSES = [(name, name) for name in (INVITATION, PASSWORD_RESET, PASSWORD_CHANGED, READ_REQUEST, ACCESS_REQUEST)]
+    STATUSES = [(name, name) for name in ("queued", "processing", "retry_wait", "sent", "failed", "suppressed", "bounced")]
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     purpose = models.CharField(max_length=32, choices=PURPOSES)
     to_address = models.EmailField(max_length=150)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
+    access_request = models.ForeignKey(AccessRequest, on_delete=models.CASCADE, null=True)
     grants_staff = models.BooleanField(default=False)
     status = models.CharField(max_length=16, choices=STATUSES, default="queued", db_index=True)
     attempt_count = models.PositiveSmallIntegerField(default=0)

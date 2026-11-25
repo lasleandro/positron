@@ -178,3 +178,23 @@ Claims to add **only after** the corresponding work in section 4:
 
 Avoid: "zero-knowledge" without qualification (metadata is visible today), "unhackable", and
 "military-grade" in any form.
+
+## 7. Audit and certification path (added 2026-11-25)
+
+There is no single certificate for "end-to-end encrypted sharing". The market combines a
+verification standard for the application, independent audits, and management-system
+certifications. Suggested order:
+
+| Step | Standard / evidence | Why |
+|---|---|---|
+| 1 | **OWASP ASVS 4.x, level 2** self-assessment (level 3 for the crypto and access-control chapters) | The reference checklist for web application security; maps directly to this codebase. |
+| 2 | **Independent cryptography review + penetration test** (e.g. firms that publish E2EE audits), with a public summary | What E2EE products show buyers; validates the key hierarchy, grants and client code. |
+| 3 | **LGPD program**: RIPD (relatório de impacto), registro de operações, encarregado (DPO), incident plan | No official LGPD certification exists (ANPD does not certify); this documentation is what customers and the ANPD ask for. Health data is sensitive (art. 11). |
+| 4 | **ISO/IEC 27001** (ISMS) + **ISO/IEC 27701** (privacy extension) | The certification Brazilian hospitals, insurers and enterprises usually request in procurement. |
+| 5 | **SOC 2 Type II** | Only if selling to US customers. |
+| 6 | **SBIS/CFM certification** (Certificação SBIS de S-RES) | Only if positioned as an electronic health record system; not needed for ephemeral sharing. |
+| Ongoing | Verifiable frontend releases (section 4, item 3), `security.txt` (RFC 9116), a vulnerability disclosure policy | Lets third parties check what runs in users' browsers and report issues. |
+
+Cryptographic primitives are standard (AES-256-GCM, ECDH P-256, PBKDF2/HKDF-SHA-256, SHA-256) and
+run in the browser's Web Crypto implementation; FIPS 140-3 validation belongs to those underlying
+modules (OS/browser), not to this application.

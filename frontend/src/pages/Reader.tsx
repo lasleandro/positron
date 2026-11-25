@@ -1,5 +1,5 @@
 import { AtSign, MonitorSmartphone, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 
 import { Alert } from "../components/Alert";
@@ -11,6 +11,7 @@ import {
 import { openMetadata } from "../lib/documents";
 import { documentLine, errorMessage, formatDateTime } from "../lib/format";
 import { useSession } from "../lib/session";
+import { grantRef, type Watermark } from "../lib/watermark";
 
 const POLL_MS = 1500;
 const POLL_TIMEOUT_MS = 3500;
@@ -60,6 +61,18 @@ export function Reader({ handle }: { handle?: string }) {
   const [offline, setOffline] = useState(false);
   const [busy, setBusy] = useState(false);
   const state = reader?.state;
+  const watermark = useMemo<Watermark | null>(() => {
+    if (!reader?.grant) return null;
+    const origin = reader.channel === "handle" && handle ? `@${handle}` : "leitura presencial";
+    return {
+      seed: reader.grant,
+      lines: [
+        "DIVULGAÇÃO PROIBIDA · SOMENTE LEITURA",
+        `pode abrir · ${origin} · Ref. ${grantRef(reader.grant)} · ${formatDateTime(new Date().toISOString())}`,
+        "Dados pessoais protegidos pela LGPD (Lei 13.709/2018)",
+      ],
+    };
+  }, [reader?.grant, reader?.channel, handle]);
 
   const show = useCallback(async (next: ReaderState) => {
     if (next.state !== "active" && next.state !== "pending") sessionStorage.removeItem(STORAGE.recipient);
@@ -147,7 +160,8 @@ export function Reader({ handle }: { handle?: string }) {
 
   function goToHandle(event: FormEvent) {
     event.preventDefault();
-    const target = handleInput.trim().replace(/^@/, "").toLowerCase();
+    // Accept "nome", "@nome" or a pasted "podeabrir.com/@nome" link.
+    const target = handleInput.trim().split("@").pop()!.replace(/[/?#].*$/, "").toLowerCase();
     if (target) navigate(`/@${target}`);
   }
 
@@ -157,12 +171,10 @@ export function Reader({ handle }: { handle?: string }) {
   if (!reader) return null;
 
   if (state === "active") {
-    if (!unlocked) return error ? <section className="surface form-card narrow"><Alert message={error} /></section> : null;
-    const origin = reader.channel === "handle" && handle ? `@${handle}` : "leitura presencial";
+    if (!unlocked || !watermark) return error ? <section className="surface form-card narrow"><Alert message={error} /></section> : null;
     return (
       <ReaderView heading="Documentos compartilhados" entries={unlocked.entries}
-        until={new Date(reader.expires_at!).getTime()} open={open} onExpire={refresh}
-        watermark={`Pode Abrir · ${origin} · ${formatDateTime(new Date().toISOString())}`} />
+        until={new Date(reader.expires_at!).getTime()} open={open} onExpire={refresh} watermark={watermark} />
     );
   }
 
@@ -215,8 +227,11 @@ export function Reader({ handle }: { handle?: string }) {
         <form className="handle-jump" onSubmit={goToHandle}>
           <label htmlFor="handle-input">Tem o endereço da pessoa?</label>
           <div className="copy-row">
-            <input id="handle-input" placeholder="@nome" autoCapitalize="none" spellCheck={false}
-              value={handleInput} onChange={(event) => setHandleInput(event.target.value)} />
+            <div className="prefixed">
+              <span aria-hidden="true">@</span>
+              <input id="handle-input" placeholder="nome" autoCapitalize="none" autoComplete="off" spellCheck={false}
+                maxLength={60} value={handleInput} onChange={(event) => setHandleInput(event.target.value)} />
+            </div>
             <button className="button secondary">Ir</button>
           </div>
         </form>

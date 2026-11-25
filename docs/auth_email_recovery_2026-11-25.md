@@ -58,9 +58,38 @@ unlock return copy #1; the reset link page returns copy #2.
 - Links carry tokens in the URL fragment (`#token`), so they never reach server logs.
 - `EMAIL_ENABLED=false` (development only) prints messages and links in the `[mailer]` console.
   Production refuses to start without email.
-- Local testing uses the agenda_ai mailbox: GoDaddy SMTP, user `leandro@tennisos.com.br`,
-  sender `Pode Abrir <auth@tennisos.com.br>` (renamed 2026-11-25). Move to `@podeabrir.com` with
-  SPF/DKIM/DMARC before production (see ROADMAPS/podeabrir_launch_followups_roadmap_2026-11-25.md).
+- GoDaddy SMTP with the `@podeabrir.com` mailbox; the sender is `auth@podeabrir.com`. SPF, DKIM
+  and DMARC still have to be confirmed before launch (see
+  ROADMAPS/podeabrir_launch_followups_roadmap_2026-11-25.md).
+- The wordmark travels inside each message (`cid:` inline PNG from `exams/email_assets/logo.png`),
+  so it shows whatever server sent it and without loading remote images.
+- Every message carries `X-PodeAbrir-Ref: <delivery id>`, which bounce reports quote back.
+
+### Undeliverable addresses (2026-11-25)
+
+- **Domain check, at invite time** (`mail_domains.py`, dnspython): the recipient domain must have
+  an MX record (or an A/AAAA record, the implicit MX) and must not publish a null MX (RFC 7505).
+  A clear "no" refuses the invitation with `email_domain_undeliverable`; DNS trouble never blocks
+  it. Skipped when `EMAIL_ENABLED=false`, since nothing is sent then. It cannot detect a missing
+  mailbox at a real domain.
+- **Bounce reports, after sending** (`bounces.py`): GoDaddy accepts almost any recipient and
+  mails a delivery status notification (RFC 3464) to the sender later. Every
+  `EMAIL_BOUNCE_CHECK_SECONDS` the mail worker logs into `EMAIL_IMAP_HOST` (credentials default to
+  the SMTP ones), searches only unread messages from the last 7 days whose `Content-Type`
+  mentions `delivery-status`, reads them with `BODY.PEEK` and keeps permanent failures
+  (`Action: failed`, `Status: 5.x.x`). The delivery is found by the quoted reference, else by the
+  latest sent delivery to that address, and marked `bounced` with the status code. Only recognised
+  reports are flagged as read; other mail in that mailbox is never downloaded or changed, and
+  nothing from the messages is logged. A failure here is logged and retried; it never stops the
+  outbox.
+- The admin area shows `bounced` as "Não entregue" with the reason (address does not exist,
+  mailbox full or disabled, refused) and no resend button.
+- Anyone can mail a fake report to the sender address; the worst case is a delivery wrongly shown
+  as "Não entregue" (no access or data is affected), and the reference must match the recipient.
+- Verified 2026-11-25: IMAP login and the search work against the real mailbox (read-only check,
+  0 reports in the last 7 days). Where bounces for `auth@podeabrir.com` actually land (that mailbox
+  or a separate one) has not been confirmed with a real bounce yet; if it is a separate mailbox, set
+  `EMAIL_IMAP_USERNAME`/`EMAIL_IMAP_PASSWORD`.
 
 ## Verification (2026-11-25)
 

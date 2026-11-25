@@ -87,6 +87,10 @@ class EmailForm(forms.Form):
     email = IdentityEmailField()
 
 
+class StaffInvitationForm(EmailForm):
+    admin = forms.BooleanField(required=False)
+
+
 class InvitationTokenForm(forms.Form):
     token = TokenField()
 
@@ -98,6 +102,8 @@ class BootstrapInvitationForm(forms.Form):
 
 class EnrollmentForm(forms.Form):
     token = TokenField()
+    # Terms + Privacy Policy + specific consent for sensitive data: required to create an account.
+    consent = forms.BooleanField(required=True, error_messages={"required": "É preciso aceitar os termos para criar a conta."})
     password = DerivedSecretField()
     wrapped_password = WrappedKeyField()
     wrapped_recovery = WrappedKeyField()
@@ -163,3 +169,15 @@ class PushSubscriptionForm(forms.Form):
     endpoint = forms.URLField(max_length=500)
     p256dh = forms.RegexField(r"^[A-Za-z0-9_-]{80,100}\Z")
     auth = forms.RegexField(r"^[A-Za-z0-9_-]{16,40}\Z")
+
+
+class AccessRequestForm(forms.Form):
+    email = IdentityEmailField()
+    name = forms.CharField(max_length=120, required=False)
+    message = forms.CharField(max_length=1000, required=False)
+    website = forms.CharField(required=False)  # honeypot: humans never see or fill it
+
+
+class ConsentForm(forms.Form):
+    accept = forms.BooleanField(required=True)
+    version = forms.CharField(max_length=20)

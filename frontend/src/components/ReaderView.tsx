@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Countdown } from "./Countdown";
+import type { Watermark } from "../lib/watermark";
 import { PdfReader, type ReaderDocument } from "./PdfReader";
 
 export interface ReaderEntry { id: string; title: string; subtitle: string }
@@ -9,7 +10,7 @@ interface Props {
   heading: string;
   entries: ReaderEntry[];
   until: number;
-  watermark: string;
+  watermark: Watermark;
   open: (id: string, signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>;
   onExpire?: () => void;
 }

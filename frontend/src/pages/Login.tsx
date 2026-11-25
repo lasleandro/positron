@@ -55,6 +55,7 @@ export function Login() {
   }
 
   return (
+    <>
     <section className="surface form-card narrow">
       <h1>Entrar</h1>
       <p className="muted">
@@ -72,7 +73,7 @@ export function Login() {
             value={password} onChange={(event) => setPassword(event.target.value)} />
         </div>
         <div>
-          <label htmlFor="otp">Código do Microsoft Authenticator</label>
+          <label htmlFor="otp">Código do app autenticador</label>
           <input id="otp" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required
             value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))} />
         </div>
@@ -80,8 +81,11 @@ export function Login() {
         <button className="button primary" disabled={busy}>{busy ? "Derivando chave…" : "Entrar"}</button>
       </form>
       <p className="route-link">
-        <Link to="/esqueci-senha/">Esqueci minha senha</Link> · <Link to="/cadastro/">Primeiro acesso</Link> · <Link to="/ler/">Ler documentos</Link>
+        <Link to="/esqueci-senha/">Esqueci minha senha</Link> · <Link to="/solicitar-acesso/">Solicitar acesso</Link> · <Link to="/ler/">Ler documentos</Link>
       </p>
+      <p className="route-link subtle"><Link to="/cadastro/">Primeiro acesso com convite ou código de instalação</Link></p>
     </section>
+    <p className="app-version">Versão {__APP_VERSION__}</p>
+    </>
   );
 }

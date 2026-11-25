@@ -1,12 +1,15 @@
-import { AtSign, Bell, BellOff, Copy, Printer } from "lucide-react";
+import { AtSign, Bell, BellOff, Copy, LogOut, Printer, Scale, Smartphone } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { Alert } from "../components/Alert";
 import { api, type Profile } from "../lib/api";
 import { errorMessage } from "../lib/format";
 import { disablePush, enablePush, pushStatus, type PushStatus } from "../lib/push";
 import { useSession } from "../lib/session";
+import { useVault } from "../lib/vault";
+import { useInstallPrompt } from "../lib/pwa";
+import { CONTACT_EMAIL } from "../lib/brand";
 
 const PUSH_TEXT: Record<PushStatus, string> = {
   unsupported: "Este navegador não recebe notificações. No iPhone, adicione o Pode Abrir à tela de início primeiro.",
@@ -17,7 +20,10 @@ const PUSH_TEXT: Record<PushStatus, string> = {
 };
 
 export function Account() {
-  const { session } = useSession();
+  const { session, setSession } = useSession();
+  const { forgetVault } = useVault();
+  const navigate = useNavigate();
+  const install = useInstallPrompt();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [handle, setHandle] = useState("");
   const [active, setActive] = useState(false);
@@ -125,9 +131,34 @@ export function Account() {
         )}
       </section>
 
-      {session.user?.is_staff && (
-        <p className="route-link"><Link to="/convites/">Convidar pessoas</Link></p>
-      )}
+      <section className="surface form-card">
+        <h2><Smartphone size={18} aria-hidden="true" /> App no celular</h2>
+        <p className="muted">
+          {install.status === "installed"
+            ? "Você está usando o app instalado."
+            : "Instale o pode abrir na tela inicial para abrir como aplicativo. No iPhone, as notificações só funcionam com o app instalado."}
+        </p>
+        {install.status !== "installed" && <div className="actions"><Link className="button secondary" to="/instalar/">Como instalar</Link></div>}
+      </section>
+
+      <section className="surface form-card">
+        <h2><Scale size={18} aria-hidden="true" /> Privacidade e seus dados (LGPD)</h2>
+        <p className="muted">
+          Você aceitou os <Link to="/termos/">Termos de Uso</Link> e a <Link to="/privacidade/">Política de Privacidade</Link>{" "}
+          (versão {session.legal_version}). Para acessar, corrigir, levar ou excluir seus dados, ou revogar o consentimento,
+          escreva para <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Respondemos em até 15 dias.
+        </p>
+      </section>
+
+      <div className="actions account-footer">
+        {session.user?.is_staff && <Link to="/administracao/">Administração</Link>}
+        <button type="button" className="button ghost" onClick={() => {
+          forgetVault();
+          setSession({ ...session, user: null });
+          navigate("/");
+          api.logout().catch(() => api.session()).then(setSession, () => {});
+        }}><LogOut size={16} aria-hidden="true" />Sair</button>
+      </div>
     </div>
   );
 }

@@ -168,8 +168,10 @@ export function Library() {
               <thead>
                 <tr>
                   <th scope="col" className="col-check">
-                    <input ref={selectAll} type="checkbox" aria-label="Selecionar todos"
-                      checked={rows.length > 0 && visibleSelected === rows.length} onChange={toggleAll} />
+                    <label className="check-hit">
+                      <input ref={selectAll} type="checkbox" aria-label="Selecionar todos"
+                        checked={rows.length > 0 && visibleSelected === rows.length} onChange={toggleAll} />
+                    </label>
                   </th>
                   {COLUMNS.map(({ key, label }) => {
                     const active = sort.key === key;
@@ -190,8 +192,10 @@ export function Library() {
                 {rows.map((doc) => (
                   <tr key={doc.id} className={selected.has(doc.id) ? "selected" : undefined}>
                     <td className="col-check">
-                      <input type="checkbox" checked={selected.has(doc.id)} onChange={() => toggle(doc.id)}
-                        aria-label={`Selecionar ${doc.title}`} />
+                      <label className="check-hit">
+                        <input type="checkbox" checked={selected.has(doc.id)} onChange={() => toggle(doc.id)}
+                          aria-label={`Selecionar ${doc.title}`} />
+                      </label>
                     </td>
                     <th scope="row" className="col-title">
                       <Link to={`/documentos/${doc.id}/`}><FileLock2 size={16} aria-hidden="true" />{doc.title}</Link>

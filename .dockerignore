@@ -6,3 +6,5 @@
 frontend/dist
 frontend/public/pdfjs
 docs
+var
+.env.azure

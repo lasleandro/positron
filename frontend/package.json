@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "postinstall": "node scripts/copy-pdf-assets.mjs",
+    "brand": "node scripts/copy-brand-assets.mjs",
+    "predev": "node scripts/copy-brand-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-brand-assets.mjs",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run"

@@ -1,16 +1,70 @@
 {
-  "name": "Pode Abrir",
-  "short_name": "Pode Abrir",
+  "name": "pode abrir",
+  "short_name": "pode abrir",
   "description": "Compartilhamento efêmero e cifrado de documentos.",
   "lang": "pt-BR",
   "start_url": "/documentos/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f2ed",
-  "theme_color": "#fdfcfa",
+  "background_color": "#FCEEDB",
+  "theme_color": "#FCEEDB",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/",
+  "shortcuts": [
+    {
+      "name": "Compartilhar por link",
+      "url": "/compartilhar/",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Compartilhamentos",
+      "url": "/compartilhamentos/",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Ler documentos",
+      "url": "/ler/",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

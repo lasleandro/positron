@@ -14,6 +14,18 @@ Roadmap: [FINISHED_ROADMAPS/ephemeral_access_podeabrir_roadmap_2026-11-25.md](FI
   over every page; a countdown is always visible.
 - Browsers cannot prevent screenshots; the product says so on the landing page.
 
+### Watermark (updated 2026-11-25)
+
+Burned into the rendered page pixels (`frontend/src/lib/watermark.ts`), not a DOM overlay, so it
+cannot be deleted with developer tools. Three lines per tile: "DIVULGAÇÃO PROIBIDA · SOMENTE
+LEITURA"; "pode abrir · <channel or label> · Ref. <grant ref> · <date/time>"; "Dados pessoais
+protegidos pela LGPD (Lei 13.709/2018)". Tiles are irregular (seeded jitter in position, angle,
+size, opacity, two inks) and faint hairlines cross the glyphs, which removes the periodic pattern
+AI inpainting relies on. The `Ref.` (first 8 hex of the grant id) also appears on the grant card
+and history entries, so a leaked image is traceable to one permission. Honest limit: no visible
+watermark is removal-proof; it raises cost and adds traceability. Legal wording to be confirmed
+by counsel.
+
 ## Data model
 
 | Model | Purpose |
@@ -47,6 +59,7 @@ ended and exhausted link ids look identical (`{"state": "unavailable"}`).
 | Opens (links) | once (view once), 2–20, or unlimited; counted atomically on "Abrir" |
 | PIN (links) | required for more than one document or more than 24 h; 4–8 digits; `LINK_PIN_MAX_FAILURES` (5) wrong attempts lock the link |
 | Viewing session (links) | signed HttpOnly cookie, path-scoped to the link, lasts `LINK_VIEW_MINUTES` (30) or until expiry; revocation and expiry are checked on every content request |
+| Owner view of a reading in progress | each open stores `Grant.viewing_until` (end of that session, migration 0007). A used-up link (`exhausted`) stays under "Ativos" as "Em leitura" until then, with "Encerrar" and no extend; cards and ended rows show created, last access (from the history) and ended date-times |
 | Pending requests | `CONSULT_PAIR_MINUTES` (5); rate limits per handle and globally |
 
 Link previews (WhatsApp, Slack, mail scanners) only fetch the HTML: content is released by a
@@ -109,5 +122,12 @@ count in the tab title, independent of push.
   (second recipient refused); PIN link (wrong PIN refused, right PIN opens); `@nome` request with
   the same 6-digit code on both screens, approval and reading; unknown `@` address identical;
   history verified in the browser.
+- 2026-11-25 follow-up: a view-once link vanished from "Ativos" while its reader was still
+  reading (reported on Azure). Fixed with `viewing_until`; Django test extended, browser E2E:
+  the opened link shows "Em leitura" with dates, "Encerrar" moves it to "Encerrados" and closes
+  the reader.
+- 2026-11-25 follow-up: active cards run two timers when both apply, "Em leitura · termina em"
+  (open link session) and "Válido por" (grant validity); timers always show seconds
+  (`04:59`, `23:04:59`, `6 d 23:04:59`) so they visibly tick.
 - Web Push: real `send_one` against a local endpoint; payload decrypted with the subscriber keys.
   Delivery through Google/Mozilla/Apple push services was not tested from this environment.

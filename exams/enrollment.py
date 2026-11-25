@@ -16,8 +16,9 @@ from django.utils.crypto import constant_time_compare
 from django.views.decorators.http import require_POST
 
 from .account import session_payload, start_owner_session, wrapped_vault
-from .forms import BootstrapInvitationForm, ConfirmEnrollmentForm, EmailForm, EnrollmentForm, InvitationTokenForm
-from .models import AccountMFA, AccountVault, EmailDelivery, Invitation, SecurityState
+from .forms import BootstrapInvitationForm, ConfirmEnrollmentForm, EnrollmentForm, InvitationTokenForm, StaffInvitationForm
+from .mail_domains import undeliverable
+from .models import AccountMFA, AccountVault, ConsentRecord, EmailDelivery, Invitation, SecurityState
 from .outbox import enqueue, token_digest
 from .qr import qr_data_uri
 from .responses import ErrorCode, fail, form_errors, ok
@@ -49,7 +50,7 @@ def authenticator_setup(secret: str, email: str) -> dict:
 @require_POST
 @staff_required
 def create_invitation(request):
-    form = EmailForm(json_body(request))
+    form = StaffInvitationForm(json_body(request))
     if not form.is_valid():
         return fail(ErrorCode.VALIDATION_FAILED, 400, form_errors(form))
     email = form.cleaned_data["email"]
@@ -57,8 +58,10 @@ def create_invitation(request):
         return fail(ErrorCode.RATE_LIMITED, 429)
     if User.objects.filter(username=email).exists():
         return fail(ErrorCode.USERNAME_TAKEN, 409)
-    enqueue(EmailDelivery.INVITATION, email)
-    audit(request, "invitation.queued")
+    if undeliverable(email):
+        return fail(ErrorCode.EMAIL_DOMAIN_UNDELIVERABLE, 400)
+    enqueue(EmailDelivery.INVITATION, email, grants_staff=form.cleaned_data["admin"])
+    audit(request, "invitation.queued", admin=form.cleaned_data["admin"])
     return ok({"email": email}, status=202)
 
 
@@ -75,6 +78,8 @@ def bootstrap_invitation(request):
     email = form.cleaned_data["email"]
     if not allow_email_to(email):
         return fail(ErrorCode.RATE_LIMITED, 429)
+    if undeliverable(email):
+        return fail(ErrorCode.EMAIL_DOMAIN_UNDELIVERABLE, 400)
     enqueue(EmailDelivery.INVITATION, email, grants_staff=True)
     audit(request, "invitation.bootstrap_queued")
     return ok({"email": email}, status=202)
@@ -118,6 +123,7 @@ def enroll(request):
         "wrapped_password": data["wrapped_password"],
         "wrapped_recovery": data["wrapped_recovery"],
         "recovery_verifier": make_password(data["recovery_proof"]),
+        "consent_version": settings.LEGAL_VERSION,
         "secret": mfa_cipher().encrypt(secret.encode()).decode(),
         "expires": int(time.time()) + settings.ENROLLMENT_SECONDS,
         "attempts": 0,
@@ -144,6 +150,7 @@ def register_account(pending, step):
         user=user, wrapped_password=pending["wrapped_password"],
         wrapped_recovery=pending["wrapped_recovery"], recovery_verifier=pending["recovery_verifier"],
     )
+    ConsentRecord.objects.create(user=user, version=pending["consent_version"])
     invitation.used_at = timezone.now()
     invitation.save(update_fields=["used_at"])
     return user

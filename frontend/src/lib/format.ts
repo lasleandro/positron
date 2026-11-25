@@ -37,12 +37,15 @@ export function formatDuration(minutes: number): string {
 }
 
 /** Remaining time, compact: "04:59", "2 h 10 min", "3 dias". */
+/** Ticking remaining time: 04:59, 23:04:59, 6 d 23:04:59. */
 export function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
-  if (total < 3600) return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  const two = (value: number) => String(value).padStart(2, "0");
+  const clock = `${two(Math.floor((total % 3600) / 60))}:${two(total % 60)}`;
+  if (total < 3600) return clock;
   const hours = Math.floor(total / 3600);
-  if (hours < 48) return `${hours} h ${Math.floor((total % 3600) / 60)} min`;
-  return `${Math.floor(hours / 24)} dias`;
+  if (hours < 24) return `${hours}:${clock}`;
+  return `${Math.floor(hours / 24)} d ${two(hours % 24)}:${clock}`;
 }
 
 export function formatDateTime(iso: string): string {

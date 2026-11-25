@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 
 import { Alert } from "../components/Alert";
+import { ConsentText } from "../components/ConsentText";
 import { RecoveryCode } from "../components/RecoveryCode";
 import { api, ApiError, type AuthenticatorSetup } from "../lib/api";
 import { createAccountKeys } from "../lib/crypto";
@@ -167,14 +168,32 @@ export function Enroll() {
         <form className="form-grid" onSubmit={confirm}>
           <RecoveryCode code={recoveryCode} email={setup.email} saved={saved} onSavedChange={setSaved} />
           <section>
-            <h2>Microsoft Authenticator</h2>
-            <p className="muted">Toque em +, escolha Outra conta e escaneie o QR.</p>
+            <h2>App autenticador</h2>
+            <p className="muted">Use o app autenticador que preferir. Adicione uma conta e escaneie o QR.</p>
+            <details className="auth-help">
+              <summary>O que é um app autenticador?</summary>
+              <p>
+                Um app gratuito no celular que gera um código de 6 dígitos novo a cada 30 segundos, mesmo sem internet.
+                Ao entrar, pedimos a sua senha e esse código: quem descobrir a sua senha não entra sem o seu celular.
+              </p>
+              <p>Se ainda não tem um, instale qualquer um destes:</p>
+              <ul>
+                <li>Google Authenticator</li>
+                <li>Microsoft Authenticator</li>
+                <li>1Password ou Bitwarden</li>
+                <li>Senhas, que já vem no iPhone</li>
+              </ul>
+            </details>
             <img className="qr" src={setup.qr} width={224} height={224} alt="QR para cadastrar a conta no autenticador" />
             <details>
               <summary>Estou usando o mesmo celular</summary>
               <p>Escolha inserir manualmente e copie esta chave.</p>
               <code className="selectable">{setup.secret}</code>
             </details>
+            <p className="auth-backup">
+              O app também é pedido para redefinir a senha. Prefira um app com backup ou sincronização e transfira as
+              contas ao trocar de celular.
+            </p>
           </section>
           <div>
             <label htmlFor="otp">Código de 6 dígitos</label>
@@ -209,6 +228,10 @@ export function Enroll() {
           <PasswordInput id="confirm-password" autoComplete="new-password" minLength={MIN_PASSWORD} maxLength={256} required
             value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
         </div>
+        <label className="choice consent-choice">
+          <input type="checkbox" required />
+          <ConsentText />
+        </label>
         <Alert message={error} />
         <button className="button primary" disabled={busy || !email}>{busy ? "Gerando chaves…" : "Continuar"}</button>
       </form>

@@ -4,6 +4,7 @@ import logging
 import smtplib
 import ssl
 from dataclasses import dataclass
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -11,6 +12,8 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 logger = logging.getLogger("exams.outbox")
+# Outbox delivery id; bounce reports quote the original headers, so a bounce finds its delivery.
+REFERENCE_HEADER = "X-PodeAbrir-Ref"
 
 
 class EmailPermanentError(Exception):
@@ -22,11 +25,23 @@ class EmailRetryableError(Exception):
 
 
 @dataclass(frozen=True)
+class InlineImage:
+    """PNG embedded in the message and referenced from the HTML as ``cid:<content_id>``."""
+
+    content_id: str
+    filename: str
+    data: bytes
+
+
+@dataclass(frozen=True)
 class OutboundEmail:
     to_address: str
     subject: str
     html_body: str
     text_body: str
+    reply_to: str = ""
+    images: tuple[InlineImage, ...] = ()
+    reference: str = ""
 
 
 class SmtpEmailSender:
@@ -42,14 +57,26 @@ class SmtpEmailSender:
             raise ImproperlyConfigured("EMAIL_SMTP_SECURITY must be ssl or starttls")
 
     def _mime(self, message: OutboundEmail) -> str:
-        mime = MIMEMultipart("alternative")
+        body = MIMEMultipart("alternative")
+        body.attach(MIMEText(message.text_body, "plain", "utf-8"))
+        body.attach(MIMEText(message.html_body, "html", "utf-8"))
+        mime = body
+        if message.images:
+            mime = MIMEMultipart("related")
+            mime.attach(body)
+            for image in message.images:
+                part = MIMEImage(image.data, "png")
+                part.add_header("Content-ID", f"<{image.content_id}>")
+                part.add_header("Content-Disposition", "inline", filename=image.filename)
+                mime.attach(part)
         mime["Subject"] = message.subject
         mime["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>"
         mime["To"] = message.to_address
-        if settings.EMAIL_REPLY_TO:
-            mime["Reply-To"] = settings.EMAIL_REPLY_TO
-        mime.attach(MIMEText(message.text_body, "plain", "utf-8"))
-        mime.attach(MIMEText(message.html_body, "html", "utf-8"))
+        reply_to = message.reply_to or settings.EMAIL_REPLY_TO
+        if reply_to:
+            mime["Reply-To"] = reply_to
+        if message.reference:
+            mime[REFERENCE_HEADER] = message.reference
         return mime.as_string()
 
     def send(self, message: OutboundEmail) -> None:

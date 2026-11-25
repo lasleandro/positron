@@ -41,6 +41,8 @@ class ErrorCode(str, Enum):
     LINK_UNAVAILABLE = "link_unavailable"
     HANDLE_TAKEN = "handle_taken"
     INVALID_SEALED_DATA = "invalid_sealed_data"
+    CANNOT_CHANGE_OWN_ROLE = "cannot_change_own_role"
+    EMAIL_DOMAIN_UNDELIVERABLE = "email_domain_undeliverable"
 
 
 MESSAGES = {
@@ -52,7 +54,7 @@ MESSAGES = {
     ErrorCode.RATE_LIMITED: "Muitas tentativas. Aguarde alguns minutos.",
     ErrorCode.VALIDATION_FAILED: "Confira os campos destacados.",
     ErrorCode.INVALID_INVITE: "Convite inválido, utilizado ou expirado.",
-    ErrorCode.USERNAME_TAKEN: "Escolha outro nome de usuário.",
+    ErrorCode.USERNAME_TAKEN: "Já existe uma conta com este email.",
     ErrorCode.ENROLLMENT_EXPIRED: "O cadastro expirou. Comece novamente.",
     ErrorCode.INVALID_OTP: "Código inválido.",
     ErrorCode.ENROLLMENT_UNAVAILABLE: "O convite ou o nome de usuário deixou de estar disponível.",
@@ -74,6 +76,8 @@ MESSAGES = {
     ErrorCode.LINK_UNAVAILABLE: "Este link expirou, foi encerrado ou já foi aberto.",
     ErrorCode.HANDLE_TAKEN: "Este endereço já está em uso. Escolha outro.",
     ErrorCode.INVALID_SEALED_DATA: "O navegador não preparou os dados cifrados.",
+    ErrorCode.CANNOT_CHANGE_OWN_ROLE: "Você não pode alterar o seu próprio acesso de administrador.",
+    ErrorCode.EMAIL_DOMAIN_UNDELIVERABLE: "Este domínio não recebe e-mails. Confira o endereço.",
 }
 
 

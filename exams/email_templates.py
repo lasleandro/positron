@@ -1,10 +1,22 @@
 """Escaped multipart security emails (structure ported from agenda_ai, Pode Abrir branding)."""
 
 from html import escape
+from pathlib import Path
 
-from .mailer import OutboundEmail
+from django.conf import settings
+
+from .mailer import InlineImage, OutboundEmail
 
 BRAND = "Pode Abrir"
+
+
+GRAFITE = "#2C2923"
+MARFIM = "#FCEEDB"
+CONTACT = settings.CONTACT_EMAIL
+# The wordmark travels inside the message (cid:), so it shows wherever the email is opened,
+# whatever server sent it, and without a remote-image request.
+LOGO_CID = "logo@podeabrir.com"
+LOGO = InlineImage(LOGO_CID, "pode-abrir.png", (Path(__file__).parent / "email_assets" / "logo.png").read_bytes())
 
 
 def _message(to: str, subject: str, paragraphs: list[str], action: tuple[str, str] | None = None) -> OutboundEmail:
@@ -13,21 +25,24 @@ def _message(to: str, subject: str, paragraphs: list[str], action: tuple[str, st
         label, url = action
         action_html = (
             f'<p style="margin:28px 0;"><a href="{escape(url, quote=True)}" style="display:inline-block;'
-            'padding:12px 22px;background:#1d1d1b;color:#ffffff;border-radius:999px;text-decoration:none;'
+            f'padding:12px 22px;background:{GRAFITE};color:#ffffff;border-radius:999px;text-decoration:none;'
             f'font-weight:600;">{escape(label)}</a></p>'
         )
         action_text = f"\n{label}: {url}\n"
     body_html = "".join(f"<p>{escape(text)}</p>" for text in paragraphs)
     html = (
-        '<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f2ed;'
-        'font-family:Helvetica,Arial,sans-serif;color:#1d1d1b;"><main style="max-width:560px;margin:32px auto;'
-        'padding:32px;background:#fdfcfa;border:1px solid #dcd8cf;border-radius:14px;">'
+        f'<!doctype html><html lang="pt-BR"><body style="margin:0;background:{MARFIM};'
+        f'font-family:Helvetica,Arial,sans-serif;color:{GRAFITE};"><main style="max-width:560px;margin:32px auto;'
+        'padding:32px;background:#fffdf9;border:1px solid #e7ddcc;border-radius:14px;">'
+        f'<p style="margin:0 0 24px;"><img src="cid:{LOGO_CID}" width="160" height="35" alt="pode abrir" '
+        f'style="display:block;border:0;font:600 20px Helvetica,Arial,sans-serif;color:{GRAFITE};"></p>'
         f'<h1 style="font-size:22px;margin:0 0 16px;">{escape(subject)}</h1>'
         f'<div style="font-size:16px;line-height:1.6;">{body_html}</div>{action_html}'
-        f'<p style="margin-top:28px;font-size:13px;color:#6b6963;">{BRAND}</p></main></body></html>'
+        f'<p style="margin-top:28px;font-size:13px;color:#6e6658;">{BRAND} · '
+        f'<a href="mailto:{CONTACT}" style="color:#6e6658;">{CONTACT}</a></p></main></body></html>'
     )
-    text = f"{subject}\n\n" + "\n\n".join(paragraphs) + f"\n{action_text}\n{BRAND}"
-    return OutboundEmail(to, subject, html, text)
+    text = f"{subject}\n\n" + "\n\n".join(paragraphs) + f"\n{action_text}\n{BRAND} · {CONTACT}"
+    return OutboundEmail(to, subject, html, text, images=(LOGO,))
 
 
 def invitation_email(to: str, url: str, hours: int) -> OutboundEmail:
@@ -62,3 +77,14 @@ def read_request_email(to: str, url: str) -> OutboundEmail:
         "da tela de quem pediu antes de aprovar. O pedido expira em poucos minutos.",
         "Se você não reconhece este pedido, ignore-o ou desative o endereço pessoal em Conta.",
     ], ("Ver pedido", url))
+
+
+def access_request_email(to: str, requester: str, name: str, message: str, when: str) -> OutboundEmail:
+    """Internal notice to the team; replying answers the requester directly."""
+    lines = [f"Nova solicitação de acesso recebida em {when}.", f"Email: {requester}"]
+    if name:
+        lines.append(f"Nome: {name}")
+    lines.append(f"Mensagem: {message}" if message else "Sem mensagem.")
+    lines.append("Responda este e-mail para falar com a pessoa. Para liberar, envie um convite em Conta → Convites.")
+    email = _message(to, "Solicitação de acesso ao pode abrir", lines)
+    return OutboundEmail(email.to_address, email.subject, email.html_body, email.text_body, reply_to=requester)

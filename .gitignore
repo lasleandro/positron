@@ -12,3 +12,6 @@ frontend/public/pdfjs/
 *.tsbuildinfo
 
 .DS_Store
+
+# Generated deployment settings (contain secrets)
+var/

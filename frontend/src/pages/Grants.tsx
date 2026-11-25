@@ -9,6 +9,7 @@ import { sha256Hex } from "../lib/crypto";
 import { useDocuments } from "../lib/documents";
 import { errorMessage, formatDateTime, formatDuration } from "../lib/format";
 import { useSession } from "../lib/session";
+import { grantRef } from "../lib/watermark";
 
 const POLL_MS = 5000;
 const CHANNEL: Record<GrantChannel, { label: string; icon: typeof Link2 }> = {
@@ -22,6 +23,19 @@ const EVENT_TEXT: Record<string, string> = {
   ended: "Encerrado",
 };
 const GENESIS = "0".repeat(64);
+const END_TEXT: Partial<Record<Grant["state"], string>> = { locked: "bloqueado (PIN)", exhausted: "limite atingido", expired: "expirou" };
+
+/** A used-up link still counts while the last opener's reading session runs: the owner can end it. */
+function readingNow(grant: Grant, now: number): boolean {
+  return ["active", "exhausted"].includes(grant.state) && !!grant.viewing_until && Date.parse(grant.viewing_until) > now;
+}
+
+/** When the grant stopped working, whatever the reason. */
+function closedAt(grant: Grant): string | null {
+  if (grant.ended_at) return grant.ended_at;
+  if (grant.state === "expired") return grant.expires_at;
+  return grant.state === "exhausted" ? grant.viewing_until : null;
+}
 
 type Integrity = "checking" | "ok" | "changed" | "broken";
 
@@ -93,8 +107,11 @@ export function Grants() {
   }
 
   const pending = grants?.filter((grant) => grant.state === "pending") ?? [];
-  const active = grants?.filter((grant) => grant.state === "active") ?? [];
-  const ended = grants?.filter((grant) => !["pending", "active"].includes(grant.state)) ?? [];
+  const now = Date.now();
+  const active = grants?.filter((grant) => grant.state === "active" || readingNow(grant, now)) ?? [];
+  const ended = grants?.filter((grant) => grant.state !== "pending" && !active.includes(grant)) ?? [];
+  const lastOpened = new Map<string, string>();
+  for (const event of events) if (event.kind === "opened" && event.grant) lastOpened.set(event.grant, event.at);
   const docNames = (grant: Grant) => grant.documents.map((doc) => titles.get(doc.id) ?? "Documento").join(", ");
 
   return (
@@ -131,19 +148,32 @@ export function Grants() {
         {grants && active.length === 0 && <p className="surface empty">Nada compartilhado agora.</p>}
         {active.map((grant) => {
           const { label, icon: Icon } = CHANNEL[grant.channel];
+          const reading = readingNow(grant, now);
+          const opened = lastOpened.get(grant.id);
           return (
             <article key={grant.id} className="surface grant-card">
               <div className="grant-meta">
-                <span className="channel"><Icon size={16} aria-hidden="true" />{label}{grant.label ? ` · ${grant.label}` : ""}</span>
-                {grant.expires_at && <Countdown until={new Date(grant.expires_at).getTime()} prefix="Termina em" />}
+                <span className="channel"><Icon size={16} aria-hidden="true" />{label}{grant.label ? ` · ${grant.label}` : ""}
+                  <small className="ref" title="Aparece na marca d’água de quem lê">Ref. {grantRef(grant.id)}</small></span>
+                <span className="timers">
+                  {reading && grant.viewing_until && <Countdown until={Date.parse(grant.viewing_until)} prefix="Em leitura · termina em" />}
+                  {grant.state === "active" && grant.expires_at && <Countdown until={Date.parse(grant.expires_at)} prefix="Válido por" />}
+                </span>
               </div>
               <p className="grant-docs">{docNames(grant)}</p>
               <p className="grant-policy">
                 {grant.channel === "link" && (grant.max_opens ? `Aberto ${grant.opens} de ${grant.max_opens}` : `Aberto ${grant.opens} vez(es)`)}
+                {grant.state === "exhausted" && " · não pode ser aberto de novo"}
                 {grant.pin && " · com PIN"}
               </p>
+              <p className="grant-times">
+                Criado {formatDateTime(grant.created_at)}
+                {opened && ` · último acesso ${formatDateTime(opened)}`}
+                {reading && grant.viewing_until && ` · leitura até ${formatDateTime(grant.viewing_until)}`}
+                {grant.state === "active" && grant.expires_at && ` · válido até ${formatDateTime(grant.expires_at)}`}
+              </p>
               <div className="actions tight">
-                {session.limits.extend_minutes.map((minutes) => (
+                {grant.state === "active" && session.limits.extend_minutes.map((minutes) => (
                   <button key={minutes} className="button ghost" onClick={() => extend(grant, minutes)}>+{formatDuration(minutes)}</button>
                 ))}
                 <button className="button danger" onClick={() => end(grant)}><XCircle size={16} aria-hidden="true" />Encerrar</button>
@@ -157,12 +187,21 @@ export function Grants() {
         <section className="grant-section">
           <h2>Encerrados recentemente</h2>
           <ul className="ended-list">
-            {ended.map((grant) => (
-              <li key={grant.id}>
-                <span>{CHANNEL[grant.channel].label}{grant.label ? ` · ${grant.label}` : ""}</span>
-                <small>{grant.documents.length ? `${docNames(grant)} · ` : ""}{grant.state === "locked" ? "bloqueado (PIN)" : grant.state === "exhausted" ? "limite atingido" : grant.state === "expired" ? "expirou" : "encerrado"}</small>
-              </li>
-            ))}
+            {ended.map((grant) => {
+              const closed = closedAt(grant);
+              const opened = lastOpened.get(grant.id);
+              return (
+                <li key={grant.id}>
+                  <span>{CHANNEL[grant.channel].label}{grant.label ? ` · ${grant.label}` : ""} <small className="ref">Ref. {grantRef(grant.id)}</small></span>
+                  <small>{grant.documents.length ? `${docNames(grant)} · ` : ""}{END_TEXT[grant.state] ?? "encerrado"}</small>
+                  <small className="grant-times">
+                    Criado {formatDateTime(grant.created_at)}
+                    {opened && ` · último acesso ${formatDateTime(opened)}`}
+                    {closed && ` · encerrou ${formatDateTime(closed)}`}
+                  </small>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -184,7 +223,7 @@ export function Grants() {
                 <span>
                   <strong>{EVENT_TEXT[event.kind] ?? event.kind}</strong>
                   {event.document && ` · ${titles.get(event.document) ?? "documento"}`}
-                  <small> {CHANNEL[event.channel]?.label}{event.agent ? ` · ${event.agent}` : ""}{event.detail ? ` · ${event.detail}` : ""}</small>
+                  <small> {CHANNEL[event.channel]?.label}{event.grant ? ` · Ref. ${grantRef(event.grant)}` : ""}{event.agent ? ` · ${event.agent}` : ""}{event.detail ? ` · ${event.detail}` : ""}</small>
                 </span>
               </li>
             ))}

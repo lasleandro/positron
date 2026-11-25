@@ -86,6 +86,7 @@ def grant_payload(grant: Grant, duplicates: Counter | None = None) -> dict:
         "created_at": grant.created_at.isoformat(),
         "expires_at": grant.expires_at.isoformat() if grant.expires_at else None,
         "ended_at": grant.ended_at.isoformat() if grant.ended_at else None,
+        "viewing_until": grant.viewing_until.isoformat() if grant.viewing_until else None,
         "max_opens": grant.max_opens, "opens": grant.opens, "pin": bool(grant.pin_verifier),
         "code": grant.pairing_code or "",
         "documents": [document_summary(document) for document in grant.documents.all()],

@@ -1,18 +1,42 @@
-// Pode Abrir service worker: installability and push notifications only.
-// It deliberately has NO fetch handler and caches nothing, so documents (even encrypted) and
-// API responses never persist on the device through it.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+// pode abrir service worker: installability, push notifications and an offline page.
+// It caches exactly one static file (/offline.html, which contains no data). API responses,
+// documents (even encrypted) and app pages are never cached: every request goes to the network.
+const CACHE = "podeabrir-offline-v1";
+const OFFLINE_URL = "/offline.html";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then((cache) => cache.add(new Request(OFFLINE_URL, { cache: "reload" })))
+      .then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+// Only page navigations are intercepted, and only to show the offline page when the network
+// is unreachable. Everything else (API, documents, assets) passes through untouched.
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.mode !== "navigate" || request.method !== "GET") return;
+  event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+});
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Pode Abrir", body: "", url: "/compartilhamentos/" };
+  let data = { title: "pode abrir", body: "", url: "/compartilhamentos/" };
   try {
     data = { ...data, ...event.data.json() };
   } catch {
     // Malformed payload: show the generic notification.
   }
   event.waitUntil(self.registration.showNotification(data.title, {
-    body: data.body, icon: "/icon-192.png", badge: "/icon-192.png", tag: "podeabrir", data: { url: data.url },
+    body: data.body, icon: "/icon-192.png", badge: "/brand/badge-128.png", tag: "podeabrir", data: { url: data.url },
   }));
 });
 

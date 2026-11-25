@@ -3,13 +3,16 @@
 import hashlib
 import logging
 import secrets
+from dataclasses import replace
 from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .email_templates import invitation_email, password_changed_email, password_reset_email, read_request_email
+from .email_templates import (
+    access_request_email, invitation_email, password_changed_email, password_reset_email, read_request_email,
+)
 from .mailer import EmailPermanentError, EmailRetryableError, default_sender
 from .models import EmailDelivery, Invitation, PasswordResetToken
 
@@ -22,14 +25,16 @@ def token_digest(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def enqueue(purpose: str, to_address: str, user=None, grants_staff: bool = False) -> EmailDelivery:
-    """Queue one delivery; an identical one still pending is reused (double clicks reconcile)."""
-    existing = EmailDelivery.objects.filter(
-        purpose=purpose, to_address=to_address, status__in=PENDING,
-    ).first()
-    if existing:
-        return existing
-    return EmailDelivery.objects.create(purpose=purpose, to_address=to_address, user=user, grants_staff=grants_staff)
+def enqueue(purpose: str, to_address: str, user=None, grants_staff: bool = False, access_request=None) -> EmailDelivery:
+    """Queue one delivery; an identical one still pending is reused (double clicks reconcile).
+    Access requests are distinct messages, so each one gets its own delivery."""
+    if access_request is None:
+        existing = EmailDelivery.objects.filter(purpose=purpose, to_address=to_address, status__in=PENDING).first()
+        if existing:
+            return existing
+    return EmailDelivery.objects.create(
+        purpose=purpose, to_address=to_address, user=user, grants_staff=grants_staff, access_request=access_request,
+    )
 
 
 def issue_invitation(email: str, grants_staff: bool) -> str:
@@ -68,6 +73,10 @@ def render(delivery: EmailDelivery):
         )
     if delivery.purpose == EmailDelivery.PASSWORD_CHANGED:
         return password_changed_email(delivery.to_address)
+    if delivery.purpose == EmailDelivery.ACCESS_REQUEST and delivery.access_request is not None:
+        request = delivery.access_request
+        when = timezone.localtime(request.created_at).strftime("%d/%m/%Y %H:%M")
+        return access_request_email(delivery.to_address, request.email, request.name, request.message, when)
     if delivery.purpose == EmailDelivery.READ_REQUEST:
         return read_request_email(delivery.to_address, f"{settings.ORIGIN}/compartilhamentos/")
     raise EmailPermanentError("unsupported_purpose")
@@ -110,7 +119,7 @@ def schedule_retry(delivery: EmailDelivery, code: str, now) -> None:
 def deliver(delivery: EmailDelivery, sender, now) -> None:
     try:
         with transaction.atomic():
-            message = render(delivery)
+            message = replace(render(delivery), reference=str(delivery.id))
             sender.send(message)
     except EmailPermanentError as exc:
         logger.error("delivery %s (%s) failed permanently: %s", delivery.id, delivery.purpose, exc)

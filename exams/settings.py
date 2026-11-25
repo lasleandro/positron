@@ -60,6 +60,19 @@ EMAIL_RETRY_BASE_SECONDS = env_int("EMAIL_RETRY_BASE_SECONDS", 60)
 EMAIL_PROCESSING_TIMEOUT_SECONDS = env_int("EMAIL_PROCESSING_TIMEOUT_SECONDS", 120)
 EMAIL_WORKER_INTERVAL_SECONDS = env_int("EMAIL_WORKER_INTERVAL_SECONDS", 3)
 EMAIL_MAX_SENDS_PER_HOUR = env_int("EMAIL_MAX_SENDS_PER_HOUR", 5)
+# Bounce reports ("não entregue") are read over IMAP from the mailbox that receives mail for
+# EMAIL_FROM_ADDRESS. Empty EMAIL_IMAP_HOST disables it. Credentials default to the SMTP ones.
+EMAIL_IMAP_HOST = os.getenv("EMAIL_IMAP_HOST", "").strip()
+EMAIL_IMAP_PORT = env_int("EMAIL_IMAP_PORT", 993)
+EMAIL_IMAP_USERNAME = os.getenv("EMAIL_IMAP_USERNAME", "").strip() or EMAIL_SMTP_USERNAME
+EMAIL_IMAP_PASSWORD = os.getenv("EMAIL_IMAP_PASSWORD", "") or EMAIL_SMTP_PASSWORD
+EMAIL_IMAP_FOLDER = os.getenv("EMAIL_IMAP_FOLDER", "INBOX").strip()
+EMAIL_BOUNCE_CHECK_SECONDS = env_int("EMAIL_BOUNCE_CHECK_SECONDS", 60)
+# Version (date) of the published Terms of Use + Privacy Policy. Bump it when the texts change
+# materially: every owner must accept the new version before using the app again.
+LEGAL_VERSION = os.getenv("LEGAL_VERSION", "2026-11-25").strip()
+# Team inbox for "Solicitar acesso" requests (and the contact shown in emails).
+CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "contato@podeabrir.com").strip()
 if not DEBUG and not EMAIL_ENABLED:
     raise ImproperlyConfigured("EMAIL_ENABLED=true é obrigatório em produção (convites e redefinição de senha).")
 

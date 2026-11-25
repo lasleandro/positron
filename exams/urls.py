@@ -1,20 +1,27 @@
 from django.urls import include, path, re_path
 
-from . import account, enrollment, grants, library, links, password_reset, profile, reader, spa
+from . import access_requests, account, admin_area, enrollment, grants, library, links, password_reset, profile, reader, spa
 
 api = [
     path("session/", account.session, name="session"),
     path("auth/login/", account.owner_login, name="login"),
     path("auth/logout/", account.owner_logout, name="logout"),
     path("auth/vault/verify/", account.verify_vault_password, name="verify_vault_password"),
+    path("consents/", account.accept_consent, name="consents"),
     path("auth/password-reset/", password_reset.request_reset, name="password_reset"),
     path("auth/password-reset/inspect/", password_reset.inspect_reset, name="password_reset_inspect"),
     path("auth/password-reset/confirm/", password_reset.confirm_reset, name="password_reset_confirm"),
     path("enrollment/", enrollment.enroll, name="enroll"),
     path("enrollment/confirm/", enrollment.confirm_enrollment, name="confirm_enrollment"),
+    path("access-requests/", access_requests.create_access_request, name="access_requests"),
     path("invitations/", enrollment.create_invitation, name="invitations"),
     path("invitations/bootstrap/", enrollment.bootstrap_invitation, name="bootstrap_invitation"),
     path("invitations/inspect/", enrollment.inspect_invitation, name="inspect_invitation"),
+    # Admin area (staff only)
+    path("admin/invitations/", admin_area.admin_invitations, name="admin_invitations"),
+    path("admin/access-requests/", admin_area.admin_access_requests, name="admin_access_requests"),
+    path("admin/users/", admin_area.admin_users, name="admin_users"),
+    path("admin/users/<int:user_id>/", admin_area.admin_user, name="admin_user"),
     # Owner: documents
     path("documents/", library.documents, name="documents"),
     path("documents/<uuid:document_id>/", library.document_detail, name="document_detail"),

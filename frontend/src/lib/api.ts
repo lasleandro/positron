@@ -1,6 +1,6 @@
 /** Thin client for the Django JSON API ({ data, error } envelope, CSRF header). */
 
-export interface User { email: string; is_staff: boolean }
+export interface User { email: string; is_staff: boolean; consent_ok: boolean }
 export interface Limits {
   pdf_max_bytes: number;
   pair_minutes: number;
@@ -12,7 +12,7 @@ export interface Limits {
   max_opens: number;
   link_view_minutes: number;
 }
-export interface Session { user: User | null; csrf_token: string; vault_namespace: string; limits: Limits }
+export interface Session { user: User | null; csrf_token: string; vault_namespace: string; legal_version: string; limits: Limits }
 /** Title and issuer arrive sealed; the browser opens them with the document's data key. */
 export interface SealedDocument { id: string; sealed_title: string; sealed_issuer: string; document_date: string }
 export interface OwnerDocument extends SealedDocument { wrapped_key: string }
@@ -27,6 +27,7 @@ export interface Grant {
   created_at: string;
   expires_at: string | null;
   ended_at: string | null;
+  viewing_until: string | null;
   max_opens: number | null;
   opens: number;
   pin: boolean;
@@ -36,6 +37,17 @@ export interface Grant {
   nonce?: string;
   pair_until?: string;
   duplicate?: boolean;
+}
+export interface Page<T> { items: T[]; page: number; has_more: boolean }
+export type InvitationStatus = "queued" | "sent" | "bounced" | "failed" | "expired" | "account";
+export interface AdminInvitation {
+  id: string; email: string; admin: boolean; created_at: string; status: InvitationStatus; bounce_code: string;
+}
+export interface AdminAccessRequest {
+  id: number; email: string; name: string; message: string; created_at: string; status: "new" | "invited" | "account";
+}
+export interface AdminUser {
+  id: number; email: string; is_staff: boolean; is_self: boolean; date_joined: string; last_login: string | null;
 }
 export interface GrantEvent {
   id: number;
@@ -57,6 +69,7 @@ export interface ReaderState {
   qr?: string;
   nonce?: string;
   pair_until?: string;
+  grant?: string;
   salt?: string;
   sender_key?: string;
   expires_at?: string;
@@ -139,6 +152,7 @@ export const api = {
   login: (email: string, password: string, otp: string) =>
     withSession(request<OwnerSession>("POST", "auth/login/", { email, password, otp })) as Promise<OwnerSession>,
   logout: () => withSession(request<Session>("POST", "auth/logout/")),
+  acceptConsent: (version: string) => withSession(request<Session>("POST", "consents/", { accept: true, version })),
   verifyVault: (password: string) => request<{ wrapped_vault: string }>("POST", "auth/vault/verify/", { password }),
   requestPasswordReset: (email: string) => request<{ message: string }>("POST", "auth/password-reset/", { email }),
   inspectReset: (token: string) =>
@@ -148,9 +162,15 @@ export const api = {
   inspectInvitation: (token: string) => request<{ email: string }>("POST", "invitations/inspect/", { token }),
   bootstrapInvitation: (token: string, email: string) =>
     request<{ email: string }>("POST", "invitations/bootstrap/", { token, email }),
-  createInvitation: (email: string) => request<{ email: string }>("POST", "invitations/", { email }),
+  requestAccess: (body: { email: string; name: string; message: string; website: string }) =>
+    request<{ message: string }>("POST", "access-requests/", body),
+  createInvitation: (email: string, admin = false) => request<{ email: string }>("POST", "invitations/", { email, admin }),
+  adminInvitations: (page = 1) => request<Page<AdminInvitation>>("GET", `admin/invitations/?page=${page}`),
+  adminAccessRequests: (page = 1) => request<Page<AdminAccessRequest>>("GET", `admin/access-requests/?page=${page}`),
+  adminUsers: (page = 1) => request<Page<AdminUser>>("GET", `admin/users/?page=${page}`),
+  setAdmin: (id: number, isStaff: boolean) => request<AdminUser>("PATCH", `admin/users/${id}/`, { is_staff: isStaff }),
   enroll: (token: string, password: string, keys: AccountKeys) =>
-    request<AuthenticatorSetup>("POST", "enrollment/", { token, password, ...keys }),
+    request<AuthenticatorSetup>("POST", "enrollment/", { token, password, ...keys, consent: true }),
   confirmEnrollment: (otp: string) =>
     withSession(request<OwnerSession>("POST", "enrollment/confirm/", { otp })) as Promise<OwnerSession>,
 

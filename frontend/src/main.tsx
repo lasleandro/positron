@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
 import { PAIRING_CODE, STORAGE } from "./lib/crypto";
+import "./lib/pwa"; // captures the Android install prompt before React mounts
 import "./styles.css";
 
 // The office QR opens /autorizar/#CODE.FINGERPRINT. Keep the code for the Approve

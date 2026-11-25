@@ -6,6 +6,7 @@ only after an explicit "Abrir" (POST), so link-preview bots cannot consume a vie
 """
 
 import time
+from datetime import datetime, timezone as dt_timezone
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
@@ -94,13 +95,14 @@ def open_link(request, grant_id):
         error = check_pin(request, grant, form.cleaned_data["pin"])
         if error:
             return error
+        until = min(grant.expires_at.timestamp(), time.time() + settings.LINK_VIEW_MINUTES * 60)
         grant.opens += 1
-        grant.save(update_fields=["opens"])
+        grant.viewing_until = max(grant.viewing_until or timezone.now(), datetime.fromtimestamp(until, dt_timezone.utc))
+        grant.save(update_fields=["opens", "viewing_until"])
         shared = list(
             GrantDocument.objects.filter(grant=grant).select_related("document")
             .only("wrapped_key", *[f"document__{field}" for field in SUMMARY_FIELDS])
         )
-    until = min(grant.expires_at.timestamp(), time.time() + settings.LINK_VIEW_MINUTES * 60)
     record_event(grant, "opened", agent=browser_agent(request), detail=f"abertura {grant.opens}")
     notify_owner(grant.owner, "Link aberto", "Alguém abriu um link que você compartilhou.", "/compartilhamentos/")
     response = ok({

@@ -2,6 +2,7 @@ asgiref==3.13.0
 cffi==2.1.1
 cryptography==49.0.0
 Django==5.2.19
+dnspython==2.8.0
 gunicorn==25.3.0
 http_ece==1.2.1
 packaging==26.4

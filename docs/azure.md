@@ -2,6 +2,36 @@
 
 A imagem do repositório compila o frontend React (Vite) em um estágio Node e executa Django e Gunicorn (Python 3.11) na porta 8000, servindo a API em `/api/` e o SPA nas demais rotas. Esta configuração usa **Azure App Service Linux com contêiner personalizado**, **Azure Container Registry** e **Azure Database for PostgreSQL Flexible Server**. Comece com uma instância do App Service. O contêiner roda as migrações antes de inicializar o Gunicorn. A versão com cofre requer uma instalação anterior vazia ou um banco novo. Leia a [avaliação de criptografia](crypto_assessment_2026-11-25.md) antes de atualizar uma instância com dados.
 
+## 0. Primeiro deploy (estado em 2026-11-25)
+
+| Etapa | Situação |
+|---|---|
+| Banco `positron_db` no servidor `tennisosdb` (Flexible Server, PostgreSQL 18) | **Criado** e migrado (Django, `verify-full`). Nenhum outro banco do servidor foi alterado. |
+| Dados locais | **Copiados** de `positron_db` local: 1 conta (cofre, MFA, perfil `@`), 2 documentos, 4 compartilhamentos com histórico, 1 convite. Contagens, bytes cifrados e a cadeia do histórico conferem. Não copiados: contadores de limite, fila de e-mails e sessões. |
+| Configuração do App Service | Gerada por `scripts/generate_azure_app_settings.py` (abaixo). |
+| Imagem | `Dockerfile` + `scripts/deploy/entrypoint.sh` (papéis) + `healthcheck.sh`. Testada localmente em modo produção contra o banco Azure. |
+| Web App, domínio e certificado | Pendentes (passos manuais, seções 2 e 5). |
+
+**Chaves que não podem mudar**: `VAULT_NAMESPACE` e `TOTP_ENCRYPTION_KEY` precisam ser exatamente as do `.env` local, porque os dados copiados dependem delas. `DJANGO_SECRET_KEY` pode (e deve) ser nova em produção.
+
+### Gerar as configurações
+
+```bash
+# opcional: .env.azure com valores só de produção (ex.: DJANGO_SECRET_KEY nova)
+python scripts/generate_azure_app_settings.py --app-name <nome-do-app> --origin https://podeabrir.com
+az webapp config appsettings set -g "$RG" -n "$APP" --settings @var/azure/app-settings.<nome-do-app>.json
+```
+
+O script junta `.env` → invariantes do contêiner (`APP_ENV=production`, `WEBSITES_PORT=8000`, `EMAIL_ENABLED=true`, ...) → `.env.azure`, mapeia `AZURE_PG_*` para `POSTGRES_*`, descarta chaves só de desenvolvimento, valida importando as configurações reais do Django e grava o JSON com permissão 600 em `var/azure/` (fora do git). Valores secretos nunca são impressos. Com `--key-vault <cofre>` gera referências do Key Vault.
+
+### Imagem
+
+```bash
+az acr build --registry "$ACR" --image "pode-abrir:$(cat VERSION)" .
+```
+
+Papéis (`ROLE`): `platform` (padrão: migrações, worker de e-mail reiniciado automaticamente e Gunicorn), `web`, `mailer`, `migrate`. A versão exibida abaixo do login vem do arquivo `VERSION` na raiz.
+
 ## 1. Rede e banco
 
 - Use PostgreSQL 17 e um banco dedicado. Para produção, coloque o PostgreSQL em rede privada e use a integração de VNet do App Service. Com Flexible Server em VNet, use uma subnet delegada para PostgreSQL, outra para App Service e DNS privado associado à VNet. O hostname usado pelo cliente deve ser o FQDN fornecido pelo Azure.
@@ -26,7 +56,7 @@ APP='<nome-do-app>'
 RG='<grupo-do-app>'
 TAG='v0.1.0'
 
-az acr build --registry "$ACR" --image "pode-abrir:$TAG" .
+az acr build --registry "$ACR" --image "pode-abrir:$TAG" .   # TAG=$(cat VERSION)
 ACR_LOGIN="$(az acr show --name "$ACR" --query loginServer -o tsv)"
 ACR_ID="$(az acr show --name "$ACR" --query id -o tsv)"
 APP_PRINCIPAL="$(az webapp identity assign -g "$RG" -n "$APP" --query principalId -o tsv)"
@@ -66,6 +96,7 @@ No Azure Portal, adicione estas variáveis em **Settings → Environment variabl
 | `WEBSITE_WARMUP_PATH` | `/healthz` |
 | `WEBSITE_WARMUP_STATUSES` | `200` |
 | `EMAIL_ENABLED` + `EMAIL_SMTP_*`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME` | Obrigatórios em produção (convites e redefinição de senha). O contêiner inicia o worker `send_emails` junto do Gunicorn. Use um domínio com SPF, DKIM e DMARC. |
+| `EMAIL_IMAP_*`, `EMAIL_BOUNCE_CHECK_SECONDS` | Leitura dos avisos de não entrega pelo worker (IMAP). Usuário e senha herdam os do SMTP quando vazios. |
 | `PASSWORD_RESET_MINUTES` | Validade do link de redefinição (padrão 30) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Notificações push do app instalável. Gere com `python manage.py generate_vapid`. Sem elas, o push fica desativado. |
 | `GRANT_MAX_MINUTES`, `LINK_VIEW_MINUTES`, `LINK_PIN_MAX_FAILURES` | Limites do acesso efêmero (padrões em `.env.example`) |

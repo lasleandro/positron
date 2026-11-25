@@ -5,7 +5,7 @@
 3. Include .md files in docs folder, unless asked differently. Refer important docs in the main README.md in the project root. Please always add a date suffix to the filename.
 4. Code decoupled from the main app/API should be placed in the scripts folder.
 5.  Always keep an updated requirements.txt file in the project root.
-6. The local database, inside the running Docker container, is named "fluid_db", if it already exists. If not, use this name when we create it.
+6. The local database is "positron_db", inside the shared Docker container agenda_ai_local_pg (same container as the agenda_ai project). PostgreSQL only (no SQLite). Allowed disposable databases: "test_positron_db" (created/dropped by the Django test runner) and "positron_e2e" (scripts/e2e_database.py, browser tests). Never touch any other database in that container or in Azure.
 7. Modularize the code, following software development best practices.
 8. Always externalize server parametrization in .env. Also, always check .env for server and DB parameters.
 9. Do not use emojis. Prefer professional icons / .svg, like we have in other projects.

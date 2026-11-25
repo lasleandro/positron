@@ -64,6 +64,7 @@ def reader_payload(grant) -> dict:
     elif state == "active":
         shared = GrantDocument.objects.filter(grant=grant, document__owner_id=grant.owner_id).select_related("document")
         payload.update(
+            grant=str(grant.id),  # shown as "Ref." in the watermark, traceable in the owner's list
             salt=key_salt(grant), sender_key=grant.sender_key, expires_at=grant.expires_at.isoformat(),
             documents=[{**document_summary(item.document), "wrapped_key": item.wrapped_key} for item in shared],
         )

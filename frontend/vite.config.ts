@@ -1,4 +1,6 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from "node:fs";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 
@@ -6,8 +8,11 @@ import { defineConfig, loadEnv } from "vite";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, "..", "");
   const backend = `http://127.0.0.1:${env.BACKEND_PORT || "8030"}`;
+  // Platform version from the repository-root VERSION file (shown under the login card).
+  const version = readFileSync(new URL("../VERSION", import.meta.url), "utf8").trim();
   return {
     plugins: [react()],
+    define: { __APP_VERSION__: JSON.stringify(version) },
     server: {
       port: Number(env.FRONTEND_PORT || 5190),
       strictPort: true,

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 
 const POLL_MS = 5000;
-const BASE_TITLE = "Pode Abrir";
+const BASE_TITLE = "pode abrir";
 
 /** Poll @handle requests waiting for the signed-in owner; reflects the count in the tab title. */
 export function usePendingRequests(enabled: boolean) {

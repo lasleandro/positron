@@ -8,7 +8,7 @@ from django.middleware.csrf import get_token
 from django.views.decorators.http import require_GET, require_POST
 
 from .forms import LoginForm, VaultVerifyForm
-from .models import AccountVault
+from .models import AccountVault, ConsentRecord
 from .policy import EXTEND_MINUTES, IN_PERSON_MINUTES, LINK_MINUTES, MAX_OPENS_LIMIT
 from .responses import ErrorCode, fail, form_errors, ok
 from .security import allow_attempt, audit, json_body, owner_required, rate_key, verify_owner
@@ -18,7 +18,11 @@ def session_payload(request) -> dict:
     """Everything the SPA needs before rendering: identity, CSRF token and product limits."""
     user = request.user
     return {
-        "user": {"email": user.username, "is_staff": user.is_staff} if user.is_authenticated else None,
+        "user": {
+            "email": user.username, "is_staff": user.is_staff,
+            "consent_ok": ConsentRecord.objects.filter(user=user, version=settings.LEGAL_VERSION).exists(),
+        } if user.is_authenticated else None,
+        "legal_version": settings.LEGAL_VERSION,
         "csrf_token": get_token(request),
         "vault_namespace": settings.VAULT_NAMESPACE,
         "limits": {
@@ -92,4 +96,18 @@ def owner_logout(request):
     if request.user.is_authenticated:
         audit(request, "auth.logout")
     logout(request)
+    return ok(session_payload(request))
+
+
+@require_POST
+@owner_required
+def accept_consent(request):
+    """Record acceptance of the current Terms + Privacy Policy (consent gate, policy updates)."""
+    from .forms import ConsentForm
+
+    form = ConsentForm(json_body(request))
+    if not form.is_valid() or form.cleaned_data["version"] != settings.LEGAL_VERSION:
+        return fail(ErrorCode.VALIDATION_FAILED, 400)
+    ConsentRecord.objects.get_or_create(user=request.user, version=settings.LEGAL_VERSION)
+    audit(request, "consent.accepted", version=settings.LEGAL_VERSION)
     return ok(session_payload(request))

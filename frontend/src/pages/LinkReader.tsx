@@ -1,5 +1,5 @@
 import { FileLock2, Lock, TimerOff } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router";
 
 import { Alert } from "../components/Alert";
@@ -9,6 +9,7 @@ import { aesKey, decode, openPdf, unseal } from "../lib/crypto";
 import { openMetadata } from "../lib/documents";
 import { documentLine, errorMessage, formatDateTime, formatDuration } from "../lib/format";
 import { useSession } from "../lib/session";
+import { grantRef, type Watermark } from "../lib/watermark";
 
 const POLL_MS = 3000;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -50,6 +51,14 @@ export function LinkReader() {
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const watermark = useMemo<Watermark>(() => ({
+    seed: linkId,
+    lines: [
+        "DIVULGAÇÃO PROIBIDA · SOMENTE LEITURA",
+        `pode abrir · ${opened?.label || "link"} · Ref. ${grantRef(linkId)} · ${formatDateTime(new Date().toISOString())}`,
+        "Dados pessoais protegidos pela LGPD (Lei 13.709/2018)",
+    ],
+  }), [linkId, opened?.label]);
 
   useEffect(() => {
     api.linkPreview(linkId).then(setPreview, () => setPreview({ state: "unavailable" }));
@@ -107,8 +116,7 @@ export function LinkReader() {
   if (opened) {
     return (
       <ReaderView heading="Documentos compartilhados com você" entries={opened.entries} until={opened.until}
-        open={openDocument} onExpire={close}
-        watermark={`Pode Abrir · ${opened.label || "link"} · ${formatDateTime(new Date().toISOString())}`} />
+        open={openDocument} onExpire={close} watermark={watermark} />
     );
   }
   if (!preview) return null;
