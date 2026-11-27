@@ -118,13 +118,7 @@ summary { cursor: pointer; color: var(--muted); font-size: .93rem; }
 .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: clamp(1.5rem, 5vw, 4.5rem); align-items: center; padding-block: clamp(.5rem, 3vw, 2rem); }
 .hero h1 { font-size: clamp(2.4rem, 6vw, 4.4rem); line-height: 1.02; letter-spacing: -.045em; margin-bottom: 1.1rem; }
 .lead { max-width: 33rem; font-size: 1.12rem; color: var(--muted); }
-.steps { list-style: none; margin: 0; padding: .5rem clamp(1rem, 3vw, 1.75rem); }
-.steps li { display: grid; grid-template-columns: auto auto 1fr; gap: .9rem; align-items: start; padding: 1.15rem 0; }
-.steps li + li { border-top: 1px solid var(--line); }
-.steps strong { display: block; }
-.steps span:not(.step-index) { display: block; margin-top: .2rem; color: var(--muted); line-height: 1.45; font-size: .95rem; }
-.step-index { font: 600 .8rem ui-monospace, monospace; color: var(--accent-ink); padding-top: .2rem; }
-.step-icon { color: var(--ink); margin-top: .05rem; }
+.step-index { font: 600 .8rem ui-monospace, monospace; color: var(--muted); }
 .landing-invite { margin-top: 2rem; color: var(--muted); }
 
 /* Library */
@@ -387,6 +381,31 @@ a.row-title:hover { color: var(--accent-ink); }
 .pillar p { color: var(--muted); margin: 0; }
 .section-title { font-size: 1.4rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 .ways { margin-bottom: 3rem; }
+/* "Três jeitos" infographic (adapted from frontend/assets/pode-abrir-compartilhamento) */
+.ways-tile { display: inline-grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-sm); background: var(--signal-soft); color: var(--signal); }
+.ways-source { display: flex; align-items: center; gap: .85rem; width: fit-content; max-width: 100%; margin: 0 auto; padding: .8rem 1.25rem .8rem .8rem; }
+.ways-source strong { font-size: 1.05rem; }
+/* Stem from the source card that splits into one drop per option (columns separated by a 1rem gap). */
+.ways-branch { position: relative; height: 2rem; }
+.ways-branch::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 2px solid var(--line-strong); }
+.ways-branch::after { content: ""; position: absolute; top: 50%; bottom: 0; left: calc((100% - 2rem) / 6); right: calc((100% - 2rem) / 6); border: 2px solid var(--line-strong); border-bottom: 0; border-radius: 8px 8px 0 0; }
+.ways-options { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.ways-option { position: relative; padding: 1.1rem 1.2rem 1.2rem; }
+.ways-option-head { display: flex; align-items: center; justify-content: space-between; }
+.ways-option h3 { font-size: 1.1rem; margin: .8rem 0 .35rem; }
+.ways-option p { margin: 0; color: var(--muted); line-height: 1.45; font-size: .95rem; }
+.ways-address { display: block; margin-bottom: .35rem; font: 700 .9rem ui-monospace, monospace; color: var(--ink); overflow-wrap: anywhere; }
+.ways-note { display: flex; align-items: center; justify-content: center; gap: .5rem; margin: 1.4rem 0 0; font-weight: 700; text-align: center; }
+.ways-note svg { flex: none; color: var(--signal); }
+/* Narrow screens: options stack on a left rail, each joined to it by a short tick. */
+@media (max-width: 799px) {
+  .ways-source { margin: 0; width: auto; }
+  .ways-branch { display: none; }
+  .ways-options { grid-template-columns: minmax(0, 1fr); margin-left: 2rem; padding: 1rem 0 0 1.1rem; }
+  .ways-option::before { content: ""; position: absolute; left: -1.1rem; top: -1rem; height: 2.9rem; width: 1.1rem; border: 2px solid var(--line-strong); border-top: 0; border-right: 0; border-bottom-left-radius: 8px; }
+  .ways-option:not(:last-child)::after { content: ""; position: absolute; left: -1.1rem; top: 1.5rem; bottom: -1rem; border-left: 2px solid var(--line-strong); }
+  .ways-note { justify-content: flex-start; text-align: left; }
+}
 /* "Quem pode ler seu documento?" diagram (artwork in frontend/assets/pode-abrir-diagrama) */
 .flow { margin: 3rem 0 0; }
 .flow-diagram { display: block; max-width: 1140px; margin: .5rem auto 0; }
@@ -516,6 +535,7 @@ summary { padding: .6rem 0; }
 /* Login extras: version under the card, honeypot, textarea */
 .app-version { margin: 1rem auto 0; max-width: 42rem; text-align: center; font: 500 .8rem ui-monospace, monospace; color: var(--muted); }
 .route-link.subtle { margin-top: .5rem; font-size: .85rem; }
+.signup-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1.25rem; padding: .85rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--ivory-soft); font-weight: 600; }
 .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 textarea { width: 100%; padding: .6rem .8rem; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: #fff; font: inherit; color: var(--ink); resize: vertical; }
 textarea:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 3px #2c292326; }

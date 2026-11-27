@@ -1,6 +1,6 @@
 # Admin area (2026-11-25)
 
-Where admins invite people, answer "Solicitar acesso" requests and decide who else is an admin.
+Where admins invite people, answer "Solicitar conta" requests and decide who else is an admin.
 Reached from the account menu in the top right (Administração), at `/administracao/`.
 The old `/convites/` page redirects there.
 
@@ -20,7 +20,7 @@ The old `/convites/` page redirects there.
 | Tab (`?aba=`) | What it shows | Actions |
 |---|---|---|
 | Convites (`convites`) | invitation emails from the outbox, newest first: Na fila, Enviado, Não entregue (bounce, with reason), Falhou, Expirou, Conta criada | send an invitation (optionally as admin; domains that receive no mail are refused at once); resend a failed or expired one |
-| Solicitações (`solicitacoes`) | "Solicitar acesso" messages: name, email, message, date; Nova, Convidada, Já tem conta | Convidar (sends a regular invitation to that email) |
+| Solicitações (`solicitacoes`) | "Solicitar conta" messages: name, email, message, date; Nova, Convidada, Já tem conta | Convidar (sends a regular invitation to that email) |
 | Pessoas (`pessoas`) | accounts: joined, last access, admin flag | toggle admin (not for yourself) |
 
 Statuses are derived, not stored: invitation status combines the outbox row, the open

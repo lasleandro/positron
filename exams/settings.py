@@ -71,7 +71,7 @@ EMAIL_BOUNCE_CHECK_SECONDS = env_int("EMAIL_BOUNCE_CHECK_SECONDS", 60)
 # Version (date) of the published Terms of Use + Privacy Policy. Bump it when the texts change
 # materially: every owner must accept the new version before using the app again.
 LEGAL_VERSION = os.getenv("LEGAL_VERSION", "2026-11-25").strip()
-# Team inbox for "Solicitar acesso" requests (and the contact shown in emails).
+# Team inbox for "Solicitar conta" requests (and the contact shown in emails).
 CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "contato@podeabrir.com").strip()
 if not DEBUG and not EMAIL_ENABLED:
     raise ImproperlyConfigured("EMAIL_ENABLED=true é obrigatório em produção (convites e redefinição de senha).")

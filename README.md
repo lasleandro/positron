@@ -200,7 +200,7 @@ State-changing calls need the `X-CSRFToken` header (token from `GET /api/session
 | POST | `/api/auth/password-reset/` | anyone | queue reset email (always 202, no enumeration) |
 | POST | `/api/auth/password-reset/inspect/`, `/confirm/` | reset link holder | email + recovery copy; confirm with TOTP + recovery proof or fresh vault |
 | POST | `/api/consents/` | owner | accept the current Terms + Privacy version (`LEGAL_VERSION`) |
-| POST | `/api/access-requests/` | anyone | "Solicitar acesso": emails the team inbox (`CONTACT_EMAIL`), requester as Reply-To; rate-limited, honeypot |
+| POST | `/api/access-requests/` | anyone | "Solicitar conta": emails the team inbox (`CONTACT_EMAIL`), requester as Reply-To; rate-limited, honeypot |
 | POST | `/api/invitations/` | staff | email an invitation bound to that address (`admin: true` for an admin account) |
 | GET | `/api/admin/invitations/`, `/api/admin/access-requests/`, `/api/admin/users/` | staff | admin area lists (`?page=`, 50 per page) |
 | PATCH | `/api/admin/users/<id>/` | staff | grant or remove the admin role (never your own) |

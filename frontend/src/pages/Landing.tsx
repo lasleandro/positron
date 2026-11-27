@@ -1,6 +1,6 @@
 import {
-  AtSign, Briefcase, Calculator, Clock3, EyeOff, FileLock2, GraduationCap, House, Link2, Mail,
-  MonitorSmartphone, Plane, Scale, ShieldCheck, Stethoscope, Timer,
+  AtSign, Briefcase, Calculator, Clock3, EyeOff, FileLock2, Files, GraduationCap, House, Link2, Mail,
+  MonitorSmartphone, Plane, Scale, ShieldCheck, Stethoscope, Timer, UserPlus, Zap,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -28,7 +28,7 @@ const PILLARS = [
 const WAYS = [
   { icon: MonitorSmartphone, title: "Na hora, ao vivo", text: "A tela de quem vai ler mostra um QR (e um código para digitar, se preferir). Você escaneia, escolhe os documentos e o tempo. Ao sair, encerra pelo celular." },
   { icon: Link2, title: "Por link, como um snap", text: "Envie por WhatsApp ou e-mail um link que abre uma vez só ou por até 7 dias. Com PIN para vários documentos ou prazos longos." },
-  { icon: AtSign, title: "Pelo seu endereço", text: "podeabrir.com/@voce: quem abre pede acesso, e você aprova no celular conferindo um código de 6 dígitos." },
+  { icon: AtSign, title: "Pelo seu endereço", address: "podeabrir.com/@voce", text: "Quem abre pede acesso pelo seu endereço, e você aprova no celular conferindo um código de 6 dígitos." },
 ];
 
 const STANDARDS = ["AES-256-GCM", "ECDH P-256", "PBKDF2-SHA-256 + HKDF", "SHA-256 encadeado", "TOTP (RFC 6238)", "TLS 1.2+", "Web Crypto API"];
@@ -58,7 +58,10 @@ export function Landing() {
           <div className="actions">
             {session.user
               ? <Link className="button primary" to="/documentos/">Meus documentos</Link>
-              : <Link className="button primary" to="/entrar/">Entrar</Link>}
+              : <>
+                <Link className="button primary" to="/entrar/">Entrar</Link>
+                <Link className="button secondary" to="/solicitar-acesso/"><UserPlus size={18} aria-hidden="true" />Solicitar conta</Link>
+              </>}
             <Link className="button secondary" to="/ler/"><FileLock2 size={18} aria-hidden="true" />Ler documentos</Link>
           </div>
         </div>
@@ -81,15 +84,25 @@ export function Landing() {
 
       <section className="ways">
         <h2 className="section-title">Três jeitos de deixar abrir</h2>
-        <ol className="steps surface">
-          {WAYS.map(({ icon: Icon, title, text }, index) => (
-            <li key={title}>
-              <span className="step-index">{String(index + 1).padStart(2, "0")}</span>
-              <Icon className="step-icon" size={22} aria-hidden="true" />
-              <div><strong>{title}</strong><span>{text}</span></div>
+        <div className="ways-source surface">
+          <span className="ways-tile"><Files size={22} aria-hidden="true" /></span>
+          <strong>Você adiciona seus arquivos ao Pode Abrir</strong>
+        </div>
+        <div className="ways-branch" aria-hidden="true" />
+        <ol className="ways-options">
+          {WAYS.map(({ icon: Icon, title, address, text }, index) => (
+            <li key={title} className="ways-option surface">
+              <div className="ways-option-head">
+                <span className="ways-tile"><Icon size={20} aria-hidden="true" /></span>
+                <span className="step-index">{String(index + 1).padStart(2, "0")}</span>
+              </div>
+              <h3>{title}</h3>
+              {address && <code className="ways-address">{address}</code>}
+              <p>{text}</p>
             </li>
           ))}
         </ol>
+        <p className="ways-note"><Zap size={18} aria-hidden="true" />Tudo isso online ou presencial, e é tudo instantâneo.</p>
       </section>
 
       <section className="use-cases">
@@ -134,7 +147,7 @@ export function Landing() {
       </section>
 
       {!session.user && (
-        <p className="landing-invite">Ainda não tem conta? <Link to="/solicitar-acesso/">Solicite acesso</Link>. Recebeu um convite por e-mail? Abra o link recebido.</p>
+        <p className="landing-invite">Ainda não tem conta? <Link to="/solicitar-acesso/">Solicite uma conta</Link>. Recebeu um convite por e-mail? Abra o link recebido.</p>
       )}
     </div>
   );

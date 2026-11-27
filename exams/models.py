@@ -154,7 +154,7 @@ class ConsentRecord(models.Model):
 
 
 class AccessRequest(models.Model):
-    """"Solicitar acesso" from the login page, forwarded to the team (no self-signup yet)."""
+    """"Solicitar conta" from the login page, forwarded to the team (no self-signup yet)."""
 
     email = models.EmailField(max_length=150)
     name = models.CharField(max_length=120, blank=True)

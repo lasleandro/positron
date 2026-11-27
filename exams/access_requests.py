@@ -1,4 +1,4 @@
-"""Public "Solicitar acesso": forwards the request to the team inbox (no self-signup yet)."""
+"""Public "Solicitar conta": forwards the request to the team inbox (no self-signup yet)."""
 
 from django.conf import settings
 from django.views.decorators.http import require_POST

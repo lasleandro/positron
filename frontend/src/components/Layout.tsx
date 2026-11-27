@@ -43,6 +43,7 @@ function PublicNav() {
   return (
     <nav aria-label="Navegação">
       <NavLink to="/entrar/">Entrar</NavLink>
+      <NavLink to="/solicitar-acesso/">Solicitar conta</NavLink>
       <NavLink to="/ler/" className="nav-cta"><FileLock2 size={16} aria-hidden="true" />Ler documentos</NavLink>
     </nav>
   );

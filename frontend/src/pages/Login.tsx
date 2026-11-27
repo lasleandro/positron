@@ -1,3 +1,4 @@
+import { UserPlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 
@@ -81,8 +82,12 @@ export function Login() {
         <button className="button primary" disabled={busy}>{busy ? "Derivando chave…" : "Entrar"}</button>
       </form>
       <p className="route-link">
-        <Link to="/esqueci-senha/">Esqueci minha senha</Link> · <Link to="/solicitar-acesso/">Solicitar acesso</Link> · <Link to="/ler/">Ler documentos</Link>
+        <Link to="/esqueci-senha/">Esqueci minha senha</Link> · <Link to="/ler/">Ler documentos</Link>
       </p>
+      <div className="signup-cta">
+        <span>Ainda não tem conta?</span>
+        <Link className="button secondary" to="/solicitar-acesso/"><UserPlus size={18} aria-hidden="true" />Solicitar conta</Link>
+      </div>
       <p className="route-link subtle"><Link to="/cadastro/">Primeiro acesso com convite ou código de instalação</Link></p>
     </section>
     <p className="app-version">Versão {__APP_VERSION__}</p>

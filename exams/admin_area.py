@@ -65,7 +65,7 @@ def admin_invitations(request):
 @require_GET
 @staff_required
 def admin_access_requests(request):
-    """"Solicitar acesso" messages, newest first: new, invited or already with an account."""
+    """"Solicitar conta" messages, newest first: new, invited or already with an account."""
     def serialize(rows):
         emails = [row.email for row in rows]
         accounts = existing_accounts(emails)

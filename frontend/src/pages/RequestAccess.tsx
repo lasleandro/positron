@@ -42,7 +42,7 @@ export function RequestAccess() {
   }
   return (
     <section className="surface form-card narrow">
-      <h1>Solicitar acesso</h1>
+      <h1>Solicitar conta</h1>
       <p className="muted">
         O cadastro é feito por convite. Conte quem é você e a equipe envia o convite para o seu e-mail.
       </p>
